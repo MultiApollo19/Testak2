@@ -1,0 +1,14 @@
+﻿<Window x:Class="Testak2.Updater"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Testak2"
+        mc:Ignorable="d"
+        Title="Updater" Height="349.492" Width="296.32">
+    <Grid>
+        <TextBlock x:Name="firebase_status" HorizontalAlignment="Left" Margin="10,286,0,0" TextWrapping="Wrap" FontFamily="{StaticResource Roboto}"><Run Text="Firebase statu"/><Run Text="s"/></TextBlock>
+        <TextBlock x:Name="title" HorizontalAlignment="Left" TextWrapping="Wrap" VerticalAlignment="Top" Margin="83,32,0,0" FontSize="24" FontWeight="Bold" Text="Testak 2.0" FontFamily="{StaticResource Roboto}"/>
+
+    </Grid>
+</Window>

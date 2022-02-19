@@ -1,17 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
+using System.IO;
+using System.Net;
 
 
 using FireSharp.Config;
@@ -28,6 +20,8 @@ namespace Testak2
         public ListaTestow listaTestow;
 
         bool isAdmin = false;
+
+        int wybranyTest = 0;
 
         //Debug
         bool isDebug = true;
@@ -48,45 +42,49 @@ namespace Testak2
 
             if (FirebaseSetup())
             {
-                FirebaseStatus.Content = "Firebase status: Connected";
+                
                 FireBaseDownload();
                 //blankTest();
                 //admin psswd Debug
                 // Firebase_admin.Content += adminPsswd;
             }
-
-            if (isDebug)
-            {
-                FirebaseStatus.Visibility = Visibility.Visible;
-            }
+            
+            
         }
         async void FireBaseDownload()
         {
             FirebaseResponse response = await client.GetAsync("admin"); //Admin
-            adminPsswd = response.ResultAs<string>();
-            Console.WriteLine(adminPsswd);
+            if (response != null)
+            {
+                adminPsswd = response.ResultAs<string>();
+                Console.WriteLine(adminPsswd);
 
-            FirebaseResponse response1 = await client.GetAsync("Testy");
-            listaTestow = response1.ResultAs<ListaTestow>();
+                FirebaseResponse response1 = await client.GetAsync("Testy");
+                listaTestow = response1.ResultAs<ListaTestow>();
 
-            Console.WriteLine($"Liczba testów na serwerze: {listaTestow.ileTestow}");
+                Console.WriteLine($"Liczba testów na serwerze: {listaTestow.ileTestow}");
+            }
+            
         }
         void setup_admin()
         {
             kod.Visibility = Visibility.Hidden;
             Admin.Visibility = Visibility.Visible;
-            isAdmin = true;
+            //blankTest();
             //Firebase_admin.Visibility = Visibility.Visible;
-
-            List<TextBlock> testy_scroll = new List<TextBlock>();
             for (int i = 0; i < listaTestow.ileTestow; i++)
             {
-                TextBlock textBlock = new TextBlock();
-                textBlock.Text = (i+1) + ". "+listaTestow.testy[i].Tytul;
-                testy_scroll.Add(textBlock);
-                Console.WriteLine($"Dodano do listy: {(i + 1)}. {listaTestow.testy[i].Tytul}");
+                string tmp =  listaTestow.testy[i].Tytul;
+                admin_lista_testow.Items.Add(tmp);               
+                Console.WriteLine($"Dodano do listy: {listaTestow.testy[i].Tytul}");
+                
             }
-            admin_testy.Content = testy_scroll;
+            admin_tytul.Text = listaTestow.testy[wybranyTest].Tytul;
+            admin_kod.Text = listaTestow.testy[wybranyTest].Kod;
+            admin_haslo.Text = listaTestow.testy[wybranyTest].Haslo;
+            admin_lista_testow.ScrollIntoView(admin_lista_testow.Items[admin_lista_testow.Items.Count - 1]);
+
+            isAdmin = true;
         }
         bool FirebaseSetup()
         {
@@ -114,6 +112,8 @@ namespace Testak2
             if (tmp_input == adminPsswd) setup_admin();
         }
 
+        
+
         async void blankTest()
         {
             List<Pytanie> pytania = new List<Pytanie>();
@@ -122,20 +122,21 @@ namespace Testak2
             pytania.Add(new Pytanie("Co sprawiło, że Michałek oślepł?", "Kapitan Bomba", "Hawajska", "Guma", "JJ Torpeda", 3));
 
             List<Test> TestLista = new List<Test>();
-            TestLista.Add(new Test("Przykładowy test","Przykład", "Hasło",pytania));
+            TestLista.Add(new Test("Przykładowy test","Wiesiek", "Mianowicie",pytania.Count,pytania));
+            TestLista.Add(new Test("Przykładowy test 2", "Amsterix", "Axterixm", pytania.Count, pytania));
+            Console.WriteLine($"Liczba pytan: {pytania.Count}");
 
-            ListaTestow listaTestow = new ListaTestow(1,TestLista);
+            ListaTestow listaTestow = new ListaTestow(TestLista.Count,TestLista);
 
-            /*testLista.testy[0].kod = "przyklad";
-            testLista.testy[0].haslo = "haslo";
-            testLista.testy[0].pytania[0].tresc = "Jak to jest być skrybą? Dobrze?";
-            testLista.testy[0].pytania[0].odpowiedzi[0] = "Moim zdaniem to nie ma...";
-            testLista.testy[0].pytania[0].odpowiedzi[1] = "Na niewtajemniczonych robi to spore wrazenie";
-            testLista.testy[0].pytania[0].odpowiedzi[2] = "Kalafiorowa";
-            testLista.testy[0].pytania[0].odpowiedzi[3] = "Conajmniej -700";*/
 
             SetResponse response = await client.SetAsync("Testy", listaTestow);
             Console.WriteLine("Dodano dane do firebase: " + response.StatusCode);
+        }
+
+        private void admin_lista_testow_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            string test = admin_lista_testow.SelectedItem.ToString();
+            Console.WriteLine(test);
         }
     }
     public class ListaTestow {
@@ -152,15 +153,17 @@ namespace Testak2
     public class Test
     {
 
-        public Test(string tytul,string kod, string haslo, List<Pytanie> pytania)
+        public Test(string tytul,string kod, string haslo,int ilePytan, List<Pytanie> pytania)
         {
             this.Tytul = tytul;
             this.Kod = kod;
             this.Haslo = haslo;
             this.Pytania = pytania;
+            this.ilePytan = ilePytan;
         }
         public string Tytul { set; get; }
         public string Kod { set; get; }
+        public int ilePytan { set; get; }
         public string Haslo { set; get; }
         public List<Pytanie> Pytania = new List<Pytanie>();
         
