@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Windows;
-
+using System.Threading.Tasks;
 using FireSharp.Config;
 using FireSharp.Interfaces;
 using FireSharp.Response;
@@ -16,6 +16,7 @@ namespace Testak2
     {
         public string config_file = Directory.GetCurrentDirectory() + "\\config.ini";
 
+        public Update update;
 
         IFirebaseConfig config_firebase = new FirebaseConfig
         {
@@ -32,27 +33,48 @@ namespace Testak2
             if (FirebaseSetup()) {
                 firebase_status.Text = "Firebase: Połączony";
                 //setupTemplate();
+                
                 config_setup();
             }
         }
         async void config_setup() {
-            Config config;
+            Config config = new Config(false,new Version(0,0,0,0));
             if (File.Exists(config_file))
             {
                 string read = File.ReadAllText(config_file);
                 config = JsonConvert.DeserializeObject<Config>(read);
+                if (config.isBeta)
+                {
+                    await Task.Run(() => readFirebase(true));
+                }
+                else
+                {
+                    await Task.Run(() => readFirebase(false));
+                }
             }
             else {
-                FirebaseResponse meta = await client.GetAsync("Aktualizacje/prod");
-                config = meta.ResultAs<Config>();
-
-                config.isDebug = false;
+                /*FirebaseResponse meta = await client.GetAsync("Aktualizacje/prod");
+                config = meta.ResultAs<Config>();*/
+                await Task.Run(() => readFirebase(false));
+                config.wersja = update.wersja;
+                config.isBeta = false;
 
                 string write = JsonConvert.SerializeObject(config);
 
                 File.WriteAllText(config_file, write);
             }
 
+        }
+        async Task readFirebase(bool isDebug) {
+            if (isDebug)
+            {
+                FirebaseResponse down = await client.GetAsync("Aktualizacje/dev");
+                update = down.ResultAs<Update>();
+            }
+            else {
+                FirebaseResponse down = await client.GetAsync("Aktualizacje/prod");
+                update = down.ResultAs<Update>();
+            }
         }
         bool FirebaseSetup()
         {
@@ -90,12 +112,12 @@ namespace Testak2
     }
 
     public class Config {
-        public Config(bool isDebug, Version wersja) {
-            this.isDebug = isDebug;
+        public Config(bool isBeta, Version wersja) {
+            this.isBeta = isBeta;
             this.wersja = wersja;
         }
 
-        public bool isDebug { get; set; }
+        public bool isBeta { get; set; }
         public Version wersja { get; set; }
     }
 }

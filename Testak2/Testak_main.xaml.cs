@@ -23,8 +23,9 @@ namespace Testak2
 
         int wybranyTest = 0;
 
+        Version wersja;
         //Debug
-        bool isDebug = true;
+        bool isDebug;
         string adminPsswd;
 
 
@@ -36,9 +37,13 @@ namespace Testak2
 
         IFirebaseClient client;
 
-        public Testak_main()
+        public Testak_main(bool isDebug, Version wersja)
         {
             InitializeComponent();
+
+            this.isDebug = isDebug;
+            this.wersja = wersja;
+
 
             if (FirebaseSetup())
             {

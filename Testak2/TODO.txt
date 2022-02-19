@@ -1,0 +1,11 @@
+﻿Ważne:
+Dodać pełne wsparcie dla aktualizacji
+
+
+Takie sobie:
+
+Błędy:
+
+Pomysły:
+Synchro wyników z bazą w czasie rzeczywistym (nazwa usera, wynik, aktualne pytanie)
+losowa kolejnosc pytan
