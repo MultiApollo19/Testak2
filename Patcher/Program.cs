@@ -3,10 +3,15 @@ using System.IO;
 using System.IO.Compression;
 
 using System.Threading.Tasks;
+
 using FireSharp.Config;
 using FireSharp.Interfaces;
 using FireSharp.Response;
-using FluentFTP;
+
+
+using Firebase.Storage;
+using Firebase.Auth;
+
 using Newtonsoft.Json;
 
 namespace Patcher
@@ -18,7 +23,10 @@ namespace Patcher
         static string update_cfg = Directory.GetCurrentDirectory() + "\\update.ini";
         static string update_kat = Directory.GetCurrentDirectory() + "\\update";
 
-        static string zipFile = Directory.GetCurrentDirectory() + "\\temp.pak";
+        static string zipFile = Directory.GetCurrentDirectory() + "\\main.pak";
+
+
+        static Update up = new Update(new Version(0, 0, 0, 0), "");
 
         static void Main(string[] args)
         {
@@ -32,7 +40,7 @@ namespace Patcher
         }
         static async Task checkFirebase()
         {
-            IFirebaseConfig config_firebase = new FirebaseConfig
+            IFirebaseConfig config_firebase = new FireSharp.Config.FirebaseConfig
             {
                 AuthSecret = "rZXJ8IQrYyIHujqkoeGt8YKF23G1bqjSR98bBsiH",
                 BasePath = "https://testak2-705bc-default-rtdb.europe-west1.firebasedatabase.app/"
@@ -44,35 +52,22 @@ namespace Patcher
             if (client != null)
             {
                 Console.WriteLine("Firebase: Connected");
-                await Task.Run(() => checkFTP());
+                await Task.Run(() => uploader());
+
+                Console.WriteLine("-------------------------------------");
+                Console.WriteLine("----------------DEBUG----------------");
+                Console.WriteLine($"Url: {up.url} werjsa {up.wersja.ToString()}");
+                Console.WriteLine("-------------------------------------");
+                FirebaseResponse response = await client.UpdateAsync("Aktualizacje/prod", up);
+                Console.WriteLine("Zaktualizowano dane w bazie!");
             }
             else
             {
                 Console.WriteLine("Firebase: Unable to connect");
             }
-        }
-        static async Task checkFTP() {
-            FtpClient client = new FtpClient("multiapollo19.prv.pl", "multiapollo19@prv.pl", "testaczegg");
-            await client.AutoConnectAsync();
-
-            if (client.IsConnected)
-            {
-                Console.WriteLine("FTP: Connected");
-                
-                await Task.Run(() => uploader());
-
-                Console.WriteLine("FTP: Wrzucam");
-                await client.UploadFileAsync(zipFile, "/Testag/prod/temp.pak", FtpRemoteExists.Overwrite,true);
-
-            }
-            else {
-                Console.WriteLine("Firebase: Unable to connect: "+client.LastReply);
-            }
-
-            //await client.DisconnectAsync();
-        }
+        }   
         static async Task uploader() {
-            Update up = new Update(new Version(0,0,0,0),"");
+            
             Console.WriteLine("---------------------------------");
             Console.WriteLine("Testak 2.0 Uploader Software");
             Console.WriteLine("---------------------------------");
@@ -81,6 +76,10 @@ namespace Patcher
                 up.wersja = new Version(0, 0, 0, 0);
                 string result = JsonConvert.SerializeObject(up);
                 File.WriteAllText(update_cfg, result);
+            }
+            else{
+                string stream = File.ReadAllText(update_cfg);
+                up = JsonConvert.DeserializeObject<Update>(stream);
             }
             if (!Directory.Exists(update_kat)) {
                 Directory.CreateDirectory(update_kat);
@@ -92,21 +91,52 @@ namespace Patcher
             Console.WriteLine("Kompresja plików...");
             await Task.Run(() => compression());
             Console.WriteLine("Ukończono");
+            Console.WriteLine("---------------------------------");
+            Console.WriteLine("Upload");
+            await Task.Run(() => upload());          
+            Console.WriteLine("---------------------------------");
         }
         static async Task compression() {
             Console.WriteLine("Compress: TEGO");
-            Task.Run(() => ZipFile.CreateFromDirectory(update_kat, zipFile));
+            Task.Run(() => ZipFile.CreateFromDirectory(update_kat, zipFile)).GetAwaiter().GetResult(); 
             Console.WriteLine("Compress: Tamtego");
+        }
+        static async Task upload() {
+            Console.WriteLine("Open?");
+            var stream = File.Open(Directory.GetCurrentDirectory() + "/main.pak", FileMode.Open);
+            Console.WriteLine("Open");
+            var auth = new FirebaseAuthProvider(new Firebase.Auth.FirebaseConfig("AIzaSyB_7MzUXDD6-3g6h6Dvbfwuadt_rFrXZCE"));
+            var a = await auth.SignInWithEmailAndPasswordAsync("user@uploader.net", "asdf1234");
+            Console.WriteLine("Login");
+            var task = new FirebaseStorage(
+                "testak2-705bc.appspot.com",
+                new FirebaseStorageOptions
+                {
+                    AuthTokenAsyncFactory = () => Task.FromResult(a.FirebaseToken),
+                    ThrowOnCancel = true,
+                })
+            .Child("testak")
+            .Child("full")
+            .Child("main.pak")
+            .PutAsync(stream);
+
+            task.Progress.ProgressChanged += (s, e) => Console.WriteLine($"Postęp uploadu: {e.Percentage}/100 %");
+            var downloadUrl = await task;
+            up.url = downloadUrl;
+            Console.WriteLine("Plik dostępny pod adresem: " + up.url + " rozpoczynam aktualizację bazy.");            
         }
     }
     public class Update
     {
-        public Update(Version wersja, string url_do_pobrania)
+        public Update(Version wersja, string url_do_pobrania,bool isDev = false)
         {
             this.wersja = wersja;
             this.url = url_do_pobrania;
+            this.isDev = isDev;
         }
         public Version wersja { get; set; } // budowa jest taka: major,minor,build,revision. Revision będzie tylko 0 lub wiecej, 0 oznacza wersję produkcyjną, powyżej oznacza rc tj. 0.0.0.2 => 0.0.0 - rc2
-        public string url { set; get; } // domyślnie jest to na sztywno np. wickedlauncher.5v.pl/cos/ tutaj ta zmienna
+        public string url { set; get; } // domyślnie jest to na sztywno 
+
+        public bool isDev { set; get; }
     }
 }
